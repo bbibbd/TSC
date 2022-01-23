@@ -25,3 +25,12 @@ def data_loader(trainset, validset, batch_size, shuffle):
     valloader = DataLoader(validset, shuffle=shuffle, batch_size = batch_size)
 
     return trainloader, valloader
+
+def load_test_data(data_dir):
+    test_data_path = data_dir + "tt"
+    testset = torchvision.datasets.ImageFolder(root = test_data_path, transform = data_transforms)
+    return testset
+
+def test_data_loader(testset):
+    testdataloader = DataLoader(testset, shuffle=False, batch_size=1)
+    return testdataloader
