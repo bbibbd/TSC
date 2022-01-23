@@ -7,7 +7,6 @@ class NetworkTSC(nn.Module):
         self.features=nn.Sequential(
             #in_channels, out_channels, Kernel_size, stride, padding
             nn.Conv2d(3, 64, 3, stride=2, padding=1),
-            #kernel_size
             nn.MaxPool2d(2),
             nn.ReLU(inplace=True),
 

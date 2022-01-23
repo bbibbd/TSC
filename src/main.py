@@ -1,20 +1,24 @@
 import argparse
 import torch
+import time
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from model import NetworkTSC
 from trainer import Trainer
 from utils import load_data, data_loader, load_test_data, test_data_loader
 from PIL import Image
-from sklearn.metrics import classification_report
 from torch.optim.lr_scheduler import MultiStepLR
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import ConfusionMatrixDisplay
 
 # from xml.dom import ValidationErr
 # import torchvision
 # import torch.utils.data as data
 # import torchvision.transforms as transforms
+# import numpy as np
 
 
 # test_transforms = transforms.Compose([
@@ -51,6 +55,16 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+def plot_confusion_matrix(labels, pred_labels, classes):
+    
+    fig = plt.figure(figsize = (20, 20));
+    ax = fig.add_subplot(1, 1, 1);
+    cm = confusion_matrix(labels, pred_labels);
+    cm = ConfusionMatrixDisplay(cm, display_labels = classes);
+    cm.plot(values_format = 'd', cmap = 'Blues', ax = ax)
+    plt.xticks(rotation = 20)
+    plt.savefig("../results/confusion_matrix.png", bbox_inches = 'tight', pad_inches=0.5)
+
 def main():
     args = parse_args()
 
@@ -63,6 +77,7 @@ def main():
     # learning rate scheduler
     scheduler = MultiStepLR(optimizer, milestones=[5, 10], gamma=0.1)
 
+    # if testing the model
     if(args.test):
         
         print("==> Loading pre-trained model...")
@@ -96,7 +111,9 @@ def main():
         
         output_list = []
         corr_classified = 0
+        print("==> Now classifying...")
 
+        test_start_time = time.monotonic()
         with torch.no_grad():
             model.eval()
             i=0
@@ -113,13 +130,36 @@ def main():
                 if labels_list[i] == output:
                     corr_classified +=1
                 i +=1
+        test_end_time = time.monotonic()
 
+        print("==> test done. Time: %.2f"%(test_end_time - test_start_time))
         # print(output_list)
-        print("Number of correctly classified images = %d" % corr_classified)
-        print("Number of incorrectly classified images = %d" % (numExamples - corr_classified))
-        print("Final accuracy = %f" % (corr_classified / numExamples))
+        print("    Number of correctly classified images = %d" % corr_classified)
+        print("    Number of incorrectly classified images = %d" % (numExamples - corr_classified))
+        print("    Final accuracy = %f" % (corr_classified / numExamples))
         print(classification_report(labels_list, output_list))
-                        
+
+        labels_arr = range(0, args.num_classes)
+        plot_confusion_matrix(labels_list, output_list, labels_arr)
+
+        # Show first 30 images
+        _, axs = plt.subplots(6,5,figsize=(50,75))
+        #fig.tight_layout(h_pad = 50)
+        for i in range(30):
+            row = i // 5
+            col = i % 5
+            
+            imgName = args.dataroot + 'tt/' + df.iloc[i].Path
+            img = Image.open(imgName)
+            axs[row, col].imshow(img)
+            title = "Pred: %d, Actual: %d" % (output_list[i], labels_list[i])
+            axs[row, col].set_title(title, fontsize=50)
+        
+        # plt.show()
+        plt.savefig("../results/predictions.png", bbox_inches = 'tight', pad_inches=0.5)
+
+        
+    #training the model              
     else:
         #cuda or cpu
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
